@@ -1,14 +1,12 @@
 import cv2
 import numpy as np
-from threading import Thread
 from queue import Queue
-
-# Kommunikation: Signal Queue
-signal_queue = Queue()
+#from queue_manager import signal_queue  # Importiere die zentrale Queue
 
 # Konfiguration
-camera_index = 1  # Externe Kamera
+camera_index = 1  # Externe Kamera, passe den Index an
 WHITE_THRESHOLD_HIT = 0.35  # Schwelle für Treffer
+signal_queue = Queue()
 
 # Farben für Konsolenausgabe
 RESET_COLOR = "\033[0m"
@@ -40,7 +38,7 @@ def analyze_image_continuously():
 
         # Konturen finden
         contours, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        large_contours = [c for c in contours if cv2.contourArea(c) > 500]  # Mindestfläche
+        large_contours = [c for c in contours if cv2.contourArea(c) > 500]
 
         # Weißanteil berechnen
         white_pixels = sum(cv2.contourArea(c) for c in large_contours)
@@ -67,5 +65,4 @@ def analyze_image_continuously():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-
     analyze_image_continuously()

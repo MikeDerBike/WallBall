@@ -4,7 +4,8 @@ import sys
 import math
 from queue import Queue
 from threading import Thread
-from kameratest import signal_queue  # Importiere die Signal-Queue
+#from queue_manager import signal_queue  # Importiere die zentrale Queue
+from kameratest import analyze_image_continuously  # Importiere die Videodetektion
 
 # Bildschirmkonfiguration
 pygame.init()
@@ -12,6 +13,7 @@ SCREEN_WIDTH = 1500
 SCREEN_HEIGHT = 800
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Wall Ball")
+signal_queue = Queue()
 
 # Farben
 WHITE = (255, 255, 255)
@@ -19,7 +21,7 @@ BLACK = (0, 0, 0)
 
 # Variablen
 BALL_RADIUS = 30
-BASE_BALL_SPEED = 3  # Basisgeschwindigkeit des Balls
+BASE_BALL_SPEED = 3
 LEFT_RIGHT_MARGIN = 100
 TOP_BOTTOM_MARGIN = 50
 TEXT_HEIGHT = 50
@@ -46,7 +48,6 @@ class HoloKick:
         )
 
     def set_speed(self, level):
-        # Geschwindigkeit erhöht sich mit dem Level
         speed = BASE_BALL_SPEED + level * 0.5
         angle = random.uniform(0, 2 * math.pi)
         return speed * math.cos(angle), speed * math.sin(angle)
@@ -91,11 +92,13 @@ def main():
 
         # Prüfe auf Treffer-Signal von der Videodetektion
         if not signal_queue.empty():
+            print("Signal gefunden in Queue!")  # Debug-Ausgabe
             signal = signal_queue.get()
             if signal == "HIT":
+                print("Treffer erkannt!")  # Debug-Ausgabe
                 level += 1
+                print(f"Level erhöht! Aktuelles Level: {level}")  # Debug-Ausgabe
                 bullseye = HoloKick(level)  # Erstelle neuen Ball mit aktualisiertem Level
-                print(f"Level erhöht! Aktuelles Level: {level}")
 
         bullseye.move()
         bullseye.draw()
@@ -108,9 +111,7 @@ def main():
         clock.tick(60)
 
 if __name__ == "__main__":
-    # Starte die Videodetektion in einem separaten Thread
-    video_thread = Thread(target=lambda: __import__('videodetection').analyze_image_continuously)
+    video_thread = Thread(target=analyze_image_continuously)
     video_thread.start()
 
-    # Starte das Spiel
     main()
