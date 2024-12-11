@@ -19,9 +19,10 @@ BLACK = (0, 0, 0)
 BALL_RADIUS = 30
 BALL_SPEED = 3
 LEFT_RIGHT_MARGIN = 100  # Erweiterter Sicherheitsabstand für links und rechts
-TOP_BOTTOM_MARGIN = 80   # Sicherheitsabstand für oben (inkl. Schrift) und unten
+TOP_BOTTOM_MARGIN = 50   # Sicherheitsabstand für oben (inkl. Schrift) und unten
 TEXT_HEIGHT = 50         # Bereich, den die Schrift oben beansprucht
 game_over = False
+ball_visible = True  # Ball ist standardmäßig sichtbar
 
 # Sichere Bewegungsfläche des Balls
 MOVEMENT_AREA_WIDTH = SCREEN_WIDTH - 2 * LEFT_RIGHT_MARGIN
@@ -48,7 +49,9 @@ class HoloKick:
         return speed * math.cos(angle), speed * math.sin(angle)
 
     def draw(self):
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
+        # Ball wird nur gezeichnet, wenn er sichtbar ist
+        if ball_visible:
+            pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
 
     def is_clicked(self, pos):
         distance = math.sqrt((pos[0] - self.x) ** 2 + (pos[1] - self.y) ** 2)
@@ -75,7 +78,7 @@ class HoloKick:
 
 # Spiel Schleife
 def main():
-    global game_over, bullseye
+    global game_over, ball_visible, bullseye
     clock = pygame.time.Clock()
 
     # Lade den Retro-Font
@@ -93,12 +96,14 @@ def main():
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
-                if bullseye.is_clicked(event.pos):
+                if ball_visible and bullseye.is_clicked(event.pos):
                     bullseye = HoloKick()
-                else:
+                elif ball_visible:
                     game_over = True
 
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_v:  # Umschalten der Sichtbarkeit mit "V"
+                    ball_visible = not ball_visible
                 if game_over and event.key == pygame.K_r:
                     game_over = False
                     bullseye = HoloKick()

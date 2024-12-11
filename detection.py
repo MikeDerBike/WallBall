@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 # Verzeichnis der Marker-Bilder
-markers_dir = "/Users/skottie/PycharmProjects/BME3 Holokick/markers"
+markers_dir = "/Users/mak/PycharmProjects/WallBall2/DetectionFiles"
 marker_files = [f for f in os.listdir(markers_dir) if f.startswith("marker_")]
 marker_images = {os.path.splitext(f)[0]: cv2.imread(os.path.join(markers_dir, f), cv2.IMREAD_GRAYSCALE) for f in
                  marker_files}
