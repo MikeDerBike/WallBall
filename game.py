@@ -2,7 +2,6 @@ import pygame
 import random
 import sys
 import math
-import os
 
 pygame.init()
 
@@ -10,84 +9,83 @@ pygame.init()
 SCREEN_WIDTH = 1500
 SCREEN_HEIGHT = 800
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
-pygame.display.set_caption("HoloKick")
+pygame.display.set_caption("Wall Ball")
 
 # Farben
-SKY_BLUE = (135, 206, 235)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 
 # Variablen
-level = 1
-max_level = 10
-initial_bullseye_radius = 30  # kleinerer Radius für den Punkt
-initial_bullseye_speed = 3
+BALL_RADIUS = 30
+BALL_SPEED = 3
+LEFT_RIGHT_MARGIN = 100  # Erweiterter Sicherheitsabstand für links und rechts
+TOP_BOTTOM_MARGIN = 80   # Sicherheitsabstand für oben (inkl. Schrift) und unten
+TEXT_HEIGHT = 50         # Bereich, den die Schrift oben beansprucht
 game_over = False
+
+# Sichere Bewegungsfläche des Balls
+MOVEMENT_AREA_WIDTH = SCREEN_WIDTH - 2 * LEFT_RIGHT_MARGIN
+MOVEMENT_AREA_HEIGHT = SCREEN_HEIGHT - TOP_BOTTOM_MARGIN - TEXT_HEIGHT
 
 # Bullseye-Klasse
 class HoloKick:
-    def __init__(self, level):
-        self.level = level
-        self.radius = self.set_radius()
+    def __init__(self):
+        self.radius = BALL_RADIUS
         self.x, self.y = self.set_initial_position()
-        self.angle = 0
-        self.color = WHITE  # Der Punkt wird weiß sein
+        self.color = WHITE
         self.dx, self.dy = self.set_speed()
 
     def set_initial_position(self):
-        if self.level == 3:
-            return self.radius + 10, SCREEN_HEIGHT - self.radius - 30
-        elif self.level == 4:
-            return SCREEN_WIDTH - self.radius - 30, self.radius + 10
-        else:
-            return (
-                random.randint(self.radius + 20, SCREEN_WIDTH - self.radius - 20),
-                random.randint(self.radius + 20, SCREEN_HEIGHT - self.radius - 20)
-            )
-
-    def set_radius(self):
-        if self.level < 5:
-            return max(20, initial_bullseye_radius - (self.level - 1) * 10)
-        else:
-            return 50
+        # Ball startet nur innerhalb des sicheren Bereichs
+        return (
+            random.randint(LEFT_RIGHT_MARGIN + self.radius, LEFT_RIGHT_MARGIN + MOVEMENT_AREA_WIDTH - self.radius),
+            random.randint(TOP_BOTTOM_MARGIN + TEXT_HEIGHT + self.radius, TOP_BOTTOM_MARGIN + TEXT_HEIGHT + MOVEMENT_AREA_HEIGHT - self.radius)
+        )
 
     def set_speed(self):
-        speed = initial_bullseye_speed if self.level < 5 else initial_bullseye_speed + (
-                    self.level - 4) * 0.5
         angle = random.uniform(0, 2 * math.pi)
+        speed = BALL_SPEED
         return speed * math.cos(angle), speed * math.sin(angle)
 
     def draw(self):
-        # Der Punkt bleibt ohne Rotation, da wir nur einen Punkt darstellen
-        pygame.draw.circle(screen, self.color, (self.x, self.y), self.radius)
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.radius)
 
     def is_clicked(self, pos):
         distance = math.sqrt((pos[0] - self.x) ** 2 + (pos[1] - self.y) ** 2)
         return distance <= self.radius
 
     def move(self):
-        if level >= 5:
-            self.x += self.dx
-            self.y += self.dy
-            if self.x <= self.radius or self.x >= SCREEN_WIDTH - self.radius:
-                self.dx *= -1
-            if self.y <= self.radius or self.y >= SCREEN_HEIGHT - self.radius:
-                self.dy *= -1
+        # Bewege den Ball innerhalb der sicheren Fläche
+        self.x += self.dx
+        self.y += self.dy
+
+        # Prallt an den virtuellen Grenzen der sicheren Fläche ab
+        if self.x - self.radius < LEFT_RIGHT_MARGIN:
+            self.x = LEFT_RIGHT_MARGIN + self.radius
+            self.dx *= -1
+        if self.x + self.radius > LEFT_RIGHT_MARGIN + MOVEMENT_AREA_WIDTH:
+            self.x = LEFT_RIGHT_MARGIN + MOVEMENT_AREA_WIDTH - self.radius
+            self.dx *= -1
+        if self.y - self.radius < TOP_BOTTOM_MARGIN + TEXT_HEIGHT:
+            self.y = TOP_BOTTOM_MARGIN + TEXT_HEIGHT + self.radius
+            self.dy *= -1
+        if self.y + self.radius > TOP_BOTTOM_MARGIN + TEXT_HEIGHT + MOVEMENT_AREA_HEIGHT:
+            self.y = TOP_BOTTOM_MARGIN + TEXT_HEIGHT + MOVEMENT_AREA_HEIGHT - self.radius
+            self.dy *= -1
 
 # Spiel Schleife
 def main():
-    global level, game_over, bullseye
+    global game_over, bullseye
     clock = pygame.time.Clock()
 
     # Lade den Retro-Font
     font = pygame.font.Font('PressStart2P-Regular.ttf', 28)
 
     # Erstelle das erste Bullseye
-    bullseye = HoloKick(level)
+    bullseye = HoloKick()
 
     while True:
         screen.fill(BLACK)
-
 
         # Ereignisse
         for event in pygame.event.get():
@@ -96,19 +94,14 @@ def main():
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and not game_over:
                 if bullseye.is_clicked(event.pos):
-                    level += 1
-                    if level > max_level:
-                        game_over = True  # Setze game_over auf True, wenn Level > max_level
-                    else:
-                        bullseye = HoloKick(level)
+                    bullseye = HoloKick()
                 else:
                     game_over = True
 
             if event.type == pygame.KEYDOWN:
                 if game_over and event.key == pygame.K_r:
-                    level = 1
                     game_over = False
-                    bullseye = HoloKick(level)
+                    bullseye = HoloKick()
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     sys.exit()
@@ -116,20 +109,9 @@ def main():
         bullseye.move()
         bullseye.draw()
 
-        # Level-Text anzeigen
-        level_text = font.render(f'Level: {level}', True, BLACK)
-        if level == 11:
-            level_text = font.render("Well played!", True, BLACK)
-        screen.blit(level_text, (SCREEN_WIDTH // 2 - level_text.get_width() // 2, 10))
-
-        if game_over:
-            if level > max_level:
-                game_over_text = font.render('Gewonnen!', True, BLACK)
-            else:
-                game_over_text = font.render('Game Over!', True, BLACK)
-            restart_text = font.render('Drücke R für Neustart', True, BLACK)
-            screen.blit(game_over_text, (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - 20))
-            screen.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, SCREEN_HEIGHT // 2 + 20))
+        # Welcome-Text anzeigen
+        welcome_text = font.render("Welcome to Wall Ball", True, WHITE)
+        screen.blit(welcome_text, (SCREEN_WIDTH // 2 - welcome_text.get_width() // 2, 10))
 
         pygame.display.flip()
         clock.tick(60)
