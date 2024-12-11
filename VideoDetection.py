@@ -3,20 +3,20 @@ import numpy as np
 from threading import Thread
 from queue import Queue
 
-
+# ANSI-Farbsequenzen für die Konsole
 RESET_COLOR = "\033[0m"
 RED_COLOR = "\033[91m"
 GREEN_COLOR = "\033[92m"
 
+# Einstellbare Schwellenwerte
+WHITE_THRESHOLD_HIT = 0.35  # Schwellenwert für "Kein Treffer!" (35% Weißanteil)
+WHITE_THRESHOLD_NO_HIT = 0.05  # Schwellenwert für "Treffer!" (5% Weißanteil)
 
-WHITE_THRESHOLD_HIT = 0.35
-WHITE_THRESHOLD_NO_HIT = 0.05
-
-
+# Globale Variablen
 mask_queue = Queue()
 camera = cv2.VideoCapture(0)
 
-
+# Hauptmethode
 def analyze_image_continuously():
     if not camera.isOpened():
         print("Fehler: Kamera konnte nicht geöffnet werden.")
@@ -24,31 +24,32 @@ def analyze_image_continuously():
 
     print("Drücke 'q', um das Programm zu beenden.")
 
-
+    # Funktion zur Bildverarbeitung und Weißanteilsberechnung
     def analyze_frame(frame):
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-
-        lower_white = np.array([0, 0, 200])
-        upper_white = np.array([180, 30, 255])
+        # Masken für weißen Bereich erstellen
+        lower_white = np.array([0, 0, 200])  # Niedrigste Sättigung und hohe Helligkeit für Weiß
+        upper_white = np.array([180, 30, 255])  # Maximale Sättigung und Helligkeit für Weiß
         white_mask = cv2.inRange(hsv, lower_white, upper_white)
 
-
+        # Nur signifikante zusammenhängende weiße Bereiche berücksichtigen
         contours, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         large_contours = [c for c in contours if cv2.contourArea(c) > 500]  # Mindestfläche
 
-
+        # Debugging: Konturen zeichnen
         debug_frame = frame.copy()
         cv2.drawContours(debug_frame, large_contours, -1, (0, 255, 0), 2)
 
-
+        # Weißanteil berechnen
         white_pixels = sum(cv2.contourArea(c) for c in large_contours)
         total_pixels = white_mask.size
         white_percentage = white_pixels / total_pixels
 
-
+        # Ergebnis und Masken in die Queue schreiben
         mask_queue.put((debug_frame, white_mask, white_percentage))
 
+    # Hauptloop für Kameraanzeige und Masken
     def main_loop():
         while True:
             ret, frame = camera.read()
