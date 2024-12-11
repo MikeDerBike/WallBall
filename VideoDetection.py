@@ -1,37 +1,28 @@
 import cv2
 import numpy as np
-import sounddevice as sd
-from threading import Lock, Thread
+from threading import Thread
 from queue import Queue
 
+# ANSI-Farbsequenzen für die Konsole
+RESET_COLOR = "\033[0m"
+RED_COLOR = "\033[91m"
+GREEN_COLOR = "\033[92m"
+
 # Einstellbare Schwellenwerte
-VOLUME_THRESHOLD = 0.2  # Lautstärkeschwellenwert
-WHITE_THRESHOLD_HIT = 0.0  # Schwellenwert für "Kein Treffer!" (35% Weißanteil)
-WHITE_THRESHOLD_NO_HIT = 0.0007  # Schwellenwert für "Treffer!" (5% Weißanteil)
+WHITE_THRESHOLD_HIT = 0.35  # Schwellenwert für "Kein Treffer!" (35% Weißanteil)
+WHITE_THRESHOLD_NO_HIT = 0.05  # Schwellenwert für "Treffer!" (5% Weißanteil)
 
 # Globale Variablen
 mask_queue = Queue()
-frame_queue = Queue()
 camera = cv2.VideoCapture(0)
 
 # Hauptmethode
-def analyze_audio_and_image():
+def analyze_image_continuously():
     if not camera.isOpened():
         print("Fehler: Kamera konnte nicht geöffnet werden.")
         return
 
-    print("Drücke 'q', um das Programm zu beenden. Sprich laut genug, um die Analyse auszulösen.")
-
-    # Funktion zur Audioverarbeitung
-    def audio_callback(indata, frames, time, status):
-        if status:
-            print(f"Audio-Fehler: {status}")
-        # Lautstärke berechnen
-        volume = np.sqrt(np.mean(indata ** 2))
-        if volume > VOLUME_THRESHOLD:
-            if not frame_queue.empty():
-                frame = frame_queue.get()
-                analyze_frame(frame)
+    print("Drücke 'q', um das Programm zu beenden.")
 
     # Funktion zur Bildverarbeitung und Weißanteilsberechnung
     def analyze_frame(frame):
@@ -66,9 +57,8 @@ def analyze_audio_and_image():
                 print("Fehler: Konnte kein Bild lesen.")
                 break
 
-            # Frame in die Queue legen
-            if frame_queue.empty():
-                frame_queue.put(frame)
+            # Frame analysieren
+            analyze_frame(frame)
 
             # Masken anzeigen, falls verfügbar
             if not mask_queue.empty():
@@ -81,11 +71,11 @@ def analyze_audio_and_image():
 
                 # Weißanteil ausgeben und basierend auf den Schwellenwerten entscheiden
                 if white_percentage == 0:  # Kein Weißanteil mehr vorhanden
-                    print(f"**Treffer!** Kein Weißanteil erkannt.")
+                    print(f"{GREEN_COLOR}**Treffer!** Kein Weißanteil erkannt.{RESET_COLOR}")
                 elif white_percentage >= WHITE_THRESHOLD_HIT:  # Weißanteil 35% oder mehr
-                    print(f"Kein Treffer! Weißanteil: {white_percentage:.2%}")
+                    print(f"{RED_COLOR}Kein Treffer! Weißanteil: {white_percentage:.2%}{RESET_COLOR}")
                 elif white_percentage <= WHITE_THRESHOLD_NO_HIT:  # Weißanteil 5% oder weniger
-                    print(f"**Treffer!** Weißanteil: {white_percentage:.2%}")
+                    print(f"{RED_COLOR}**kein Treffer!** Weißanteil: {white_percentage:.2%}{RESET_COLOR}")
                 else:
                     print(f"Zwischenzustand: Weißanteil: {white_percentage:.2%}")
 
@@ -98,12 +88,8 @@ def analyze_audio_and_image():
         camera.release()
         cv2.destroyAllWindows()
 
-    # Audiostream in einem Thread starten
-    audio_thread = Thread(target=lambda: sd.InputStream(callback=audio_callback).start())
-    audio_thread.start()
-
     # Hauptloop ausführen
     main_loop()
 
 # Methode ausführen
-analyze_audio_and_image()
+analyze_image_continuously()
